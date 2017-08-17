@@ -175,8 +175,18 @@ class ResultadosSpider(Spider):
 
                 votosFinal.append(obj)
 
-        res = EleccionesItem()
+        try:
+            urlbase=response.url.rsplit('/',1)[0]
+            pdf=response.xpath("//iframe[@id='caja_pdf']/@src").extract()[0]
+            yield Request(
+                url='%s/%s' % (urlbase, pdf),
+                callback=self.save_pdf
+            )
+        except Exception:
+            print('Failed to download pdf')
 
+        res = EleccionesItem()
+        res['url'] = response.url
         res['estado'] = estado,
         res['provincia_num'] = response.meta['provincia_num']
         res['provincia_name'] = response.meta['provincia_name']
@@ -188,3 +198,11 @@ class ResultadosSpider(Spider):
         res['votos'] = votosFinal
 
         return res
+
+
+    def save_pdf(self, response):
+        path = response.url.split('/')[-1]
+        self.logger.info('Saving PDF %s', path)
+        with open('pdf/%s' % path, 'wb') as f:
+            f.write(response.body)
+    
